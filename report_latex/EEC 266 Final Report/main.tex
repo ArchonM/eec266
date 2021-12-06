@@ -1,0 +1,108 @@
+\documentclass{article}
+
+% Language setting
+% Replace `english' with e.g. `spanish' to change the document language
+\usepackage[english]{babel}
+
+% Set page size and margins
+% Replace `letterpaper' with`a4paper' for UK/EU standard size
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{indentfirst}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{A Survey of Algorithms for Rest and Restless Bandits with Single and Multiple Arms}
+\author{Ning Miao}
+\twocolumn
+\begin{document}
+\maketitle
+
+\begin{abstract}
+In this paper, we surveyed, implemented, and tested 2 algorithms that solves Multi-Armed Bandit (MAB) problem. These 2 algorithms includes Upper Confidence Bound (UCB), Upper Confidence Bound Multi-armed, (UCB-M), Regenerative Cycle Algorithm (RCA), and Regenerative Cycle Algorithm Multi-armed. The objective of this paper is to replicate two selected figures that were presented in \cite{6200864}. 
+\end{abstract}
+
+\section{Introduction}
+In this paper, we surveyed the MAB problem in rested and restless cases. Multiple Armed Bandit is a classic problem in information theory area. Solutions for this particular problem may be applied to various fields in real life such as Opportunistic Spectrum Access problem, Exploit and Explore problem, and even in some Machine Learning Model.
+
+A general, simplified representation for MAB problem is that: a user is facing \textit{k} bandits, at each round, this user is asked to pull \textit{m} handles. Each bandit could give some rewards. The objective is to obtain the maximum rewards. The major difference between \textit{rested} and \textit{restless} MAB is that in \textit{rested} MAB case, only one player is playing all \textit{k} bandits, while in \textit{restless} MAB situation, there will be multiple players playing these bandits.
+
+In this paper, we will first talk about how to deal with \textit{rested} MAB situation and then with \textit{restless} MAB situation. For both situations, we will first try to propose a solution fro a special situation, single armed bandit. In this situation, $\textit{m}=1$, which means that the player is only allowed to play 1 arm at each round. Based on the solution for this special case, we will try to generalize a universally applicable algorithm that will deal with cases for $\textit{m}>1$.
+
+
+\section{Algorithms}
+In this section, we will discuss and talk about details of implementing those algorithms introduced previously. All these implementations were meant to solve Opportunistic Spectrum Access (OSA) problem. The transition table and the mean rewards table were proposed and presented in \cite{6200864}.
+\subsection{Upper Confidence Bound,\\single/multiple}
+As mentioned in previous sections, in Rested Bandit case, only one player will play all bandits. Which makes it possible for this player to calculate the probabilities for each bandit machine. We will start with single armed situation. The general idea of getting a solid solution is first we need a initialized record. On this record, we will record how much reward we have gained from a certain arm. Then in each round, we will update this record and eventually, we will find out which specific arm is the most valuable one.
+
+A classic algorithm proposed was Upper Confidence Bound (UCB)\cite{ucb}. This is the one I chose to test basic ideas including: how to play an arm, how to design a probability oriented random value and how to design a structure in Python. According to the pseudo code proposed in \cite{6200864}, various variable should be defined and used. However, when implementing the actual code, we found not all variables would be used. Therefore, we simplified and improved the code which would achieve a similar result. 
+
+First we will talk about the how to implement the structure for a single arm. This will be the fundamental structure that will be used in all algorithms. Therefore, we will propose a simplest version for rested single arm bandit and then add more features for other algorithms when needed. The first feature we need to think about is the \textit{index}. The real index will not be labeled in arm structure but the one we used to determine the priority of each arm should be created here. Initially, this index will be 0 and as the player started playing, this value will be updated by the rule\cite{6200864}: $$g_{t, T^{i}(t))}^{i} = \bar{r}^{i}(T^{i}(t))+\sqrt{\frac{L*(\ln t)}{T^i(t))}}$$The difference between this rule to the universal one is that the exploration constant \textit{L}\cite{ucb} is inside the \textit{sqrt} function. This will not make a big difference since the result value is still positively related to this coefficient.
+
+From the rule introduced, we know that in order to calculate the index here, we will also need a variable to record how many time this arm has been played and a variable that tracks total reward obtained from this arm. Therefore, the next feature will be the general counter and total reward. The rule for this counter is that whenever this arm is played, the counter will add 1. The total reward will increase by 1 if change to state 1 and increase by 0.1 if change to state 0.1. This is defined by the OSA problem and is universally applicable to all algorithms.
+
+The index, the general counter and total rewards are three most important features. With these three features, we are able to implement the algorithm. However, besides these three features, to furthermore simplify the overall implementation, we also added some support features: \textit{p01} and \textit{p10} stands for the probability to change from 0 to 1 and change from 1 to 0, \textit{cur\_state} tracks the current state of this arm.
+
+The overall MAB structure is then being considered after the UCB arm structure is finished. The first thing to consider is the structure. Just like how we did for the arm structure, MAB structure would have a list save all the arms, a counter to determine how many times has been totally played, and a variable that tracks total rewards have been obtained so far. Then we need to consider\textit{initialization} function. In current situation, the \textit{initialization} process is not super difficult, what we need to do is just play through all arms without recording the total playing time. However, \textit{play} function could be complicated since python does not provide probability guided random variable. Therefore, what we can do is first generate a random variable among 0 to 100, then compare the generated random variable with $100 * transition probability$. Based on the comparison result, we can determine what will be the next state and the reward this arm could get. After every step is processed, we can now update arm's index. In each cycle, after calculated each arm's index, we will also need to sort these arm so we can always know which arm has the highest value of the index. Such arm will be selected to play in the next step.
+
+The multi-armed bandit is very similar to the single-armed bandit. All we need to change is the part when we are playing arms. In stead of just playing the arm with highest index, we first get a list of highest \textit{m} arms, and play them one by one. Since this step does not change arms' indices, it can be treated as parallel. 
+
+\subsection{Regenerative Cycle Algorithm,\\single and multiple}
+Different than rested bandit cases, in restless bandit cases we need to carefully simulate the environment, when to play what arms. Moreover, only tracking the arm that is played by the primary player is also important. Based on the UCB-M that we just discussed, we might use a similar method to deal with restless bandits. The method would also sort arms by their indices to determine which one or ones to be added into currently being played list. Based on which sub-block an arm is in, a certain rule will determine when to remove this arm from currently played list. In \cite{rca}, researchers proposed an algorithm named Regenerative Cycle Algorithm. This algorithm uses three sub-blocks to track the status of a certain arm. These sub-blocks are named as SB1, SB2, and SB3. The SB2 is the regenerative cycle, which means only the arm is in SB2 and played will be counted as player's action and thus the reward will be accumulated.
+
+It is clear that Single-Armed Bandit is actually a special case of Multi-Armed Bandit when $\textit{m} = 1$. Therefore we can use the exact same running process for both situation, which is initialization, update, and play.
+
+Based on what has been discussed previously, we will now add more features to arm structure. According to \cite{rca}, RCA would use a sub-block indicator to determine whether this arm in being played by the player or others. Instead to use true and false indicator, we used a integer indicator. It is easy to understand that there are only 4 states that a arm could be: rest, SB1, SB2, and SB3. Therefore, a single integer indicator would replace those 4 separated indicator proposed in \cite{rca}. Furthermore, the rule to update an arm's index is now: $$g_{t_{2}(b), T_{2}^{i}(t_{2}(b))}^{i} = \bar{r}^{i}(T_{2}^{i}(t_{2}(b))+\sqrt{\frac{L*(\ln t_{2}(b))}{T_{2}^{i}(t_{2}(b))}}$$
+This formula is same to the one we used to calculate the index in UCB algorithm. The rule behind this formula is to use the counter that only tracks how many time this arm is played by the player rather then others. 
+Therefore, now we need two counters in arm structure, one for the general counter, counts how many time this arm has been played, and one that only tracks the player's action.
+
+Another important pattern is the pre-specified state. This state is obtained in the \textit{initialization} process. This state is what this arm change to at the first time this arm is played. This state will only be recorded once and be static for the following process.
+
+The major difference between the \textit{UCB\_MAB} and \textit{RCA\_MAB} is that in \textit{RCA\_MAB} structure, there is a process that determine whether to accumulate the reward. Since in restless bandit, not all rewards would be accumulated. Therefore, in each cycle, only the arm with its block indicator equal 2, which means this arm is in SB2, and played, will be accumulated.
+
+\section{Figures Comparison}
+In this section, we will compare graphs generated by the RCA-M algorithm that was discussed previously, and figures proposed by \cite{6200864}.
+
+From Figure 1 and Figure 2, we can easily see that they are very similar. Since the original paper \cite{6200864} does not provide the detail data for each data point, what we did to value whether these two graphs is to compare the final position. Based on our calculation, the difference between the original position and the generated position should be less then 5\%. However, since the original figure is the mean for 100 random run, and the code we implemented only counts for an instant run, it is possible for some extreme situation, the difference could exceed 5\%. In most cases, the result from the code we implement should be very similar to original figures.
+\begin{figure}
+    \centering
+    \subfigure[Original Figure 1: S1, L=7200]{
+    \label{fig:my_label}
+    \includegraphics[width=0.3\textwidth]{Figure1_S1_7200.png}}
+    \subfigure[Original Figure 2: S3, L=3600]{
+    \label{fig:my_label}
+    \includegraphics[width=0.3\textwidth]{Figure2_S3_3600.png}}
+    \caption{These two figure were presented in \cite{6200864}}
+    \label{fig:fig1}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[Generated Figure 1: S1, L=7200]{
+    \label{fig:my_label}
+    \includegraphics[width=0.3\textwidth]{RCA_M_7200.png}}
+    \subfigure[Generated Figure 2: S3, L=3600]{
+    \label{fig:my_label}
+    \includegraphics[width=0.3\textwidth]{RCA_M_3600.png}}
+    \caption{These two figures were generated by code implemented}
+    \label{fig:fig2}
+\end{figure}
+
+
+\section{Conclusion and Discussion}
+
+\subsection{Future Work}
+Even though the RCA-M algorithm has been successfully replicated, a major problem for current implementation is that current implementation only runs the algorithm once and thus under extreme circumstance, the result generated could be \textit{unusual}. In order to solve this problem, in the future, we plan to use the mean value of the results generated by more runs. For example, if we are able to run the same algorithm 100 times and get the mean value from these 100 times, the result would by much smoother and solid. After all, in most cases, this algorithm should produce centralized results.
+
+\subsection{Definition of Regret}
+According to \cite{6200864}, the regret we used here is weak regret, which compares our result with best single action results. The best single action means only play the arm, or arms, with highest mean rewards. However, in the paper \cite{6200864}, UCB-M was able to achieve negative regret. Based on our implementation, the UCB-M we implemented could only achieve small but still positive regret.
+
+
+
+\bibliographystyle{plain}
+\bibliography{Citations}
+
+\end{document}
